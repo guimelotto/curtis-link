@@ -6,7 +6,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="referrer" content="no-referrer">
 <meta name="theme-color" content="#0E1114">
-<title>Treino do Curtis</title>
+<title>Treinos do Curtis</title>
 <style>
   :root {
     --bg: #0E1114;
@@ -64,6 +64,39 @@
   .message h1 { font-size: 22px; }
   .message p { color: var(--muted); margin: 8px 0 0; }
   .message.error h1 { color: var(--error); }
+  .back { display: inline-block; color: var(--accent); text-decoration: none; margin-bottom: 16px; font-weight: 600; }
+
+  /* Catalog */
+  .filters { display: grid; gap: 10px; margin: 0 0 18px; }
+  /* Wrap instead of side-scrolling: every option stays visible. */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    flex: none; font: inherit; font-size: 14px; font-weight: 600; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+    background: transparent; color: var(--muted); border: 1px solid var(--line);
+  }
+  .chip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  .chip:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+  .count { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+  .cards { display: grid; gap: 14px; }
+  .wcard { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+  .wcard .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .type { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+  .t-forca { color: #3DDC84; } .t-mobilidade { color: #FFB300; } .t-spinning { color: #4FC3F7; } .t-esteira { color: #FF8A65; }
+  .level { font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+  .wcard h2 { font-size: 20px; line-height: 1.25; margin: 0 0 4px; overflow-wrap: anywhere; }
+  .meta { color: var(--muted); font-size: 14px; margin: 0 0 8px; }
+  .desc { margin: 0 0 10px; }
+  .goals { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+  .goal { font-size: 12px; color: var(--text); background: var(--line); border-radius: 6px; padding: 2px 8px; }
+  details { margin: 0 0 12px; }
+  summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 15px; }
+  details .card { margin-top: 10px; }
+  .wcard .btns { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  .wcard .btn { font-size: 16px; padding: 12px; }
+  .wcard .btn-secondary { padding: 12px 14px; white-space: nowrap; }
+  .empty { color: var(--muted); text-align: center; padding: 24px 0; }
+  .intro { color: var(--muted); margin: 0 0 18px; }
+  footer { color: var(--muted); font-size: 13px; text-align: center; margin-top: 28px; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -73,7 +106,21 @@
 
   <section id="loading"><p class="lead">Abrindo o treino…</p></section>
 
+  <section id="catalog" hidden>
+    <h1>Treinos prontos</h1>
+    <p class="intro">Escolha um treino e toque em <b>Adicionar ao Curtis</b>. O app abre o treino para você conferir e salvar.</p>
+    <div class="filters">
+      <div class="chips" id="f-type" role="group" aria-label="Tipo de treino"></div>
+      <div class="chips" id="f-level" role="group" aria-label="Nível"></div>
+      <div class="chips" id="f-gear" role="group" aria-label="Equipamento"></div>
+    </div>
+    <p class="count" id="c-count"></p>
+    <div class="cards" id="c-list"></div>
+    <footer>O botão abre o app Curtis no Android. Se nada acontecer, instale o app primeiro.</footer>
+  </section>
+
   <section id="workout" hidden>
+    <a class="back" id="w-back" href="./">← Ver todos os treinos</a>
     <span class="tag" id="w-type"></span>
     <h1 id="w-name"></h1>
     <p class="lead" id="w-summary"></p>
@@ -200,9 +247,119 @@ function describe(w) {
 
 function $(id) { return document.getElementById(id); }
 
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+// ---------- catalog (page opened without a workout link) ----------
+
+const LEVEL_LABELS = { iniciante: "Iniciante", intermediario: "Intermediário", avancado: "Avançado" };
+const filters = { type: "", level: "", gear: "" };
+let catalog = null;
+
+function chipGroup(box, key, options) {
+  box.replaceChildren();
+  for (const [value, label] of options) {
+    const b = el("button", "chip", label);
+    b.type = "button";
+    b.setAttribute("aria-pressed", String(filters[key] === value));
+    b.onclick = () => { filters[key] = value; renderCatalog(); };
+    box.append(b);
+  }
+}
+
+function matches(w) {
+  if (filters.type && w.type !== filters.type) return false;
+  if (filters.level && w.level !== filters.level) return false;
+  if (filters.gear === "none" && w.equipment.some(g => g !== "Cadeira" && g !== "Parede" && g !== "Toalha")) return false;
+  if (filters.gear === "halteres" && !w.equipment.includes("Halteres")) return false;
+  return true;
+}
+
+function workoutCard(w) {
+  const card = el("article", "wcard");
+  const row = el("div", "row");
+  row.append(el("span", "type t-" + w.type, TYPE_LABELS[w.type]), el("span", "level", LEVEL_LABELS[w.level]));
+  card.append(row, el("h2", null, w.name));
+  const gear = w.equipment.length ? w.equipment.join(", ") : "Sem equipamento";
+  const count = w.rows.length + (w.type === "forca" || w.type === "mobilidade" ? " exercícios" : " etapas");
+  card.append(el("p", "meta", "~" + w.minutes + " min · " + count + " · " + gear));
+  card.append(el("p", "desc", w.description));
+  const goals = el("div", "goals");
+  for (const g of w.goals) goals.append(el("span", "goal", g));
+  card.append(goals);
+
+  const det = el("details");
+  det.append(el("summary", null, w.type === "forca" || w.type === "mobilidade" ? "Ver exercícios" : "Ver etapas"));
+  if (w.note) det.append(el("p", "note", w.note));
+  const box = el("div", "card");
+  const list = el("ol");
+  w.rows.forEach((r, i) => {
+    const li = el("li");
+    const main = el("div", "main");
+    main.append(el("div", "title", r.title));
+    if (r.detail) main.append(el("div", "detail", r.detail));
+    li.append(el("span", "num", String(i + 1)), main, el("span", "right", r.right));
+    list.append(li);
+  });
+  box.append(list);
+  det.append(box);
+  card.append(det);
+
+  const btns = el("div", "btns");
+  const add = el("a", "btn btn-primary", "Adicionar ao Curtis");
+  add.href = intentUrl(w.payload);
+  const copy = el("button", "btn btn-secondary", "Copiar link");
+  copy.type = "button";
+  copy.onclick = async () => {
+    const url = location.origin + location.pathname + "#" + w.payload;
+    try { await navigator.clipboard.writeText(url); copy.textContent = "Copiado"; }
+    catch (e) { copy.textContent = "Não deu"; }
+    setTimeout(() => { copy.textContent = "Copiar link"; }, 2500);
+  };
+  btns.append(add, copy);
+  card.append(btns);
+  return card;
+}
+
+function renderCatalog() {
+  chipGroup($("f-type"), "type", [["", "Todos"], ["forca", "Força"], ["mobilidade", "Alongamento"], ["spinning", "Spinning"], ["esteira", "Esteira"]]);
+  chipGroup($("f-level"), "level", [["", "Todos os níveis"], ["iniciante", "Iniciante"], ["intermediario", "Intermediário"], ["avancado", "Avançado"]]);
+  chipGroup($("f-gear"), "gear", [["", "Qualquer equipamento"], ["none", "Sem equipamento"], ["halteres", "Com halteres"]]);
+  const shown = catalog.filter(matches);
+  $("c-count").textContent = shown.length + (shown.length === 1 ? " treino" : " treinos");
+  const list = $("c-list");
+  list.replaceChildren(...shown.map(workoutCard));
+  if (!shown.length) list.append(el("p", "empty", "Nenhum treino com esses filtros."));
+}
+
+async function showCatalog() {
+  document.title = "Treinos do Curtis";
+  try {
+    if (!catalog) {
+      const res = await fetch("catalog.json", { cache: "no-cache" });
+      if (!res.ok) throw new Error("http " + res.status);
+      catalog = (await res.json()).workouts;
+    }
+  } catch (e) {
+    showMessage("Treinos do Curtis", "Não deu para carregar a lista de treinos. Confira a internet e tente de novo.", true);
+    return;
+  }
+  renderCatalog();
+  $("loading").hidden = true;
+  $("workout").hidden = true;
+  $("message").hidden = true;
+  $("catalog").hidden = false;
+  window.scrollTo(0, 0);
+}
+
 function showMessage(title, text, isError) {
   $("loading").hidden = true;
   $("workout").hidden = true;
+  $("catalog").hidden = true;
   $("m-title").textContent = title;
   $("m-text").textContent = text;
   $("message").classList.toggle("error", !!isError);
@@ -241,14 +398,16 @@ function render(payload, d) {
   };
   $("loading").hidden = true;
   $("message").hidden = true;
+  $("catalog").hidden = true;
   $("workout").hidden = false;
+  window.scrollTo(0, 0);
 }
 
 async function start() {
   let payload = location.hash.replace(/^#/, "").trim();
   try { payload = decodeURIComponent(payload); } catch (e) { /* keep raw; decode will reject it */ }
   if (!payload) {
-    showMessage("Treinos do Curtis", "Este endereço abre treinos do app Curtis. Peça um link de treino.");
+    await showCatalog();
     return;
   }
   if (typeof DecompressionStream === "undefined") {
