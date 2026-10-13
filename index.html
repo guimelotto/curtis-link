@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0E1114">
+<title>Treino do Curtis</title>
+<style>
+  :root {
+    --bg: #0E1114;
+    --surface: #181C20;
+    --line: #262C32;
+    --text: #ECEFF1;
+    --muted: #9AA4AD;
+    --accent: #4DD0C8;
+    --on-accent: #062321;
+    --error: #FF8A80;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  main { max-width: 520px; margin: 0 auto; padding: 24px 16px 40px; }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+  .brand-mark {
+    width: 32px; height: 32px; border-radius: 9px; background: var(--accent); color: var(--on-accent);
+    display: grid; place-items: center; font-weight: 800; font-size: 18px;
+  }
+  .brand-name { font-weight: 700; font-size: 18px; letter-spacing: .02em; }
+  .tag {
+    display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    color: var(--accent); border: 1px solid var(--accent); margin-bottom: 10px;
+  }
+  h1 { font-size: 26px; line-height: 1.2; margin: 0 0 6px; overflow-wrap: anywhere; }
+  .lead { color: var(--muted); margin: 0 0 20px; }
+  .note { color: var(--muted); font-style: italic; margin: -8px 0 20px; overflow-wrap: anywhere; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .card ol { list-style: none; margin: 0; padding: 0; }
+  .card li { display: flex; gap: 12px; align-items: baseline; padding: 12px 14px; border-top: 1px solid var(--line); }
+  .card li:first-child { border-top: 0; }
+  .num { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 1.4em; }
+  .main { flex: 1; min-width: 0; }
+  .title { font-weight: 600; overflow-wrap: anywhere; }
+  .detail { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+  .right { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .actions { margin-top: 24px; display: grid; gap: 12px; }
+  .btn {
+    display: block; width: 100%; padding: 16px; border-radius: 14px; border: 0; cursor: pointer;
+    font: inherit; font-weight: 700; font-size: 18px; text-align: center; text-decoration: none;
+  }
+  .btn-primary { background: var(--accent); color: var(--on-accent); }
+  .btn-secondary {
+    background: transparent; color: var(--text); border: 1px solid var(--line); font-size: 16px; padding: 12px;
+  }
+  .btn:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+  .help { color: var(--muted); font-size: 14px; text-align: center; margin: 0; }
+  .message { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+  .message h1 { font-size: 22px; }
+  .message p { color: var(--muted); margin: 8px 0 0; }
+  .message.error h1 { color: var(--error); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><div class="brand-mark" aria-hidden="true">C</div><div class="brand-name">Curtis</div></div>
+
+  <section id="loading"><p class="lead">Abrindo o treino…</p></section>
+
+  <section id="workout" hidden>
+    <span class="tag" id="w-type"></span>
+    <h1 id="w-name"></h1>
+    <p class="lead" id="w-summary"></p>
+    <p class="note" id="w-note" hidden></p>
+    <div class="card"><ol id="w-list"></ol></div>
+    <div class="actions">
+      <a class="btn btn-primary" id="open-app" href="#">Abrir no Curtis</a>
+      <p class="help">Se nada acontecer, instale o app Curtis primeiro.</p>
+      <button class="btn btn-secondary" id="copy" type="button">Copiar link</button>
+    </div>
+  </section>
+
+  <section id="message" class="message" hidden>
+    <h1 id="m-title"></h1>
+    <p id="m-text"></p>
+  </section>
+</main>
+
+<script>
+// Pure helpers. tools/share/check_site.mjs runs the block between the core markers in Node.
+// <core>
+const PACKAGE = "com.melotto.workout";
+const TYPE_LABELS = { forca: "Força", mobilidade: "Alongamento", spinning: "Spinning", esteira: "Esteira" };
+
+class LinkError extends Error {}
+
+function base64UrlToBytes(text) {
+  if (!/^[A-Za-z0-9_-]+$/.test(text)) throw new LinkError("bad base64");
+  let b64 = text.replace(/-/g, "+").replace(/_/g, "/");
+  while (b64.length % 4) b64 += "=";
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+// Takes "1.<payload>" (the hash without "#") and returns the workout object.
+async function decodePayload(payload) {
+  if (!payload.startsWith("1.")) throw new LinkError("unknown version");
+  const bytes = base64UrlToBytes(payload.slice(2));
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  const text = await new Response(stream).text();
+  const workout = JSON.parse(text);
+  checkWorkout(workout);
+  return workout;
+}
+
+function checkWorkout(w) {
+  const ok = w && typeof w === "object" && w.v === 1 && TYPE_LABELS[w.type] &&
+    typeof w.name === "string" && w.name.trim() !== "";
+  if (!ok) throw new LinkError("bad workout");
+  const list = isRoutine(w) ? w.items : w.intervals;
+  if (!Array.isArray(list) || list.length === 0) throw new LinkError("empty workout");
+  for (const x of list) {
+    if (!x || typeof x !== "object") throw new LinkError("bad entry");
+    if (isRoutine(w) && typeof x.exercise !== "string") throw new LinkError("bad item");
+    if (!isRoutine(w) && !(Number(x.sec) > 0)) throw new LinkError("bad interval");
+  }
+}
+
+function isRoutine(w) { return w.type === "forca" || w.type === "mobilidade"; }
+
+function intentUrl(payload) {
+  return "intent://import?d=" + payload + "#Intent;scheme=curtis;package=" + PACKAGE + ";end";
+}
+
+function readableId(id) {
+  const s = String(id).replace(/-/g, " ");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function mmss(sec) {
+  sec = Math.max(0, Math.round(Number(sec) || 0));
+  return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
+}
+
+function totalTime(sec) {
+  const min = Math.round(sec / 60);
+  if (min < 60) return min + " min";
+  const h = Math.floor(min / 60), m = min % 60;
+  return h + " h" + (m ? " " + m + " min" : "");
+}
+
+function num(x) { return String(Number(x) || 0).replace(".", ","); }
+
+// Returns { type, name, summary, note, rows: [{ title, detail, right }] }.
+function describe(w) {
+  const out = { type: TYPE_LABELS[w.type], name: w.name, note: typeof w.note === "string" ? w.note : "", rows: [] };
+  if (isRoutine(w)) {
+    const n = w.items.length;
+    out.summary = n + (n === 1 ? " exercício" : " exercícios");
+    for (const it of w.items) {
+      const sets = Number(it.sets) || 0;
+      const repsMin = Number(it.repsMin) || 0, repsMax = Number(it.repsMax) || 0;
+      const dur = Number(it.durationSec) || 0;
+      let each;
+      if (dur > 0) each = dur + " s";
+      else if (repsMin > 0 && repsMin !== repsMax) each = repsMin + "–" + repsMax;
+      else each = String(repsMax);
+      const details = [];
+      if (Number(it.restSec) > 0) details.push("Descanso " + it.restSec + " s");
+      if (typeof it.note === "string" && it.note) details.push(it.note);
+      out.rows.push({ title: readableId(it.exercise), detail: details.join(" · "), right: sets + " × " + each });
+    }
+  } else {
+    const total = w.intervals.reduce((s, iv) => s + (Number(iv.sec) || 0), 0);
+    const n = w.intervals.length;
+    out.summary = totalTime(total) + " · " + n + (n === 1 ? " etapa" : " etapas");
+    for (const iv of w.intervals) {
+      const details = [];
+      if (w.type === "spinning") {
+        details.push(iv.rpmLow + "–" + iv.rpmHigh + " rpm", "Carga " + iv.resistance);
+      } else {
+        details.push(num(iv.speedKmh) + " km/h");
+        if (Number(iv.inclinePct) > 0) details.push("Inclinação " + num(iv.inclinePct) + "%");
+        if (Number(iv.hrZone) > 0) details.push("Zona " + iv.hrZone);
+      }
+      out.rows.push({ title: iv.label || "Etapa", detail: details.join(" · "), right: mmss(iv.sec) });
+    }
+  }
+  return out;
+}
+// </core>
+
+function $(id) { return document.getElementById(id); }
+
+function showMessage(title, text, isError) {
+  $("loading").hidden = true;
+  $("workout").hidden = true;
+  $("m-title").textContent = title;
+  $("m-text").textContent = text;
+  $("message").classList.toggle("error", !!isError);
+  $("message").hidden = false;
+}
+
+function render(payload, d) {
+  document.title = d.name + " · Curtis";
+  $("w-type").textContent = d.type;
+  $("w-name").textContent = d.name;
+  $("w-summary").textContent = d.summary;
+  if (d.note) { $("w-note").textContent = d.note; $("w-note").hidden = false; }
+  const list = $("w-list");
+  list.replaceChildren();
+  d.rows.forEach((r, i) => {
+    const li = document.createElement("li");
+    const n = document.createElement("span"); n.className = "num"; n.textContent = String(i + 1);
+    const main = document.createElement("div"); main.className = "main";
+    const t = document.createElement("div"); t.className = "title"; t.textContent = r.title;
+    main.append(t);
+    if (r.detail) { const dd = document.createElement("div"); dd.className = "detail"; dd.textContent = r.detail; main.append(dd); }
+    const right = document.createElement("span"); right.className = "right"; right.textContent = r.right;
+    li.append(n, main, right);
+    list.append(li);
+  });
+  $("open-app").href = intentUrl(payload);
+  $("copy").onclick = async () => {
+    const btn = $("copy");
+    try {
+      await navigator.clipboard.writeText(location.href);
+      btn.textContent = "Link copiado";
+    } catch (e) {
+      btn.textContent = "Não deu para copiar";
+    }
+    setTimeout(() => { btn.textContent = "Copiar link"; }, 2500);
+  };
+  $("loading").hidden = true;
+  $("message").hidden = true;
+  $("workout").hidden = false;
+}
+
+async function start() {
+  let payload = location.hash.replace(/^#/, "").trim();
+  try { payload = decodeURIComponent(payload); } catch (e) { /* keep raw; decode will reject it */ }
+  if (!payload) {
+    showMessage("Treinos do Curtis", "Este endereço abre treinos do app Curtis. Peça um link de treino.");
+    return;
+  }
+  if (typeof DecompressionStream === "undefined") {
+    showMessage("Abra no Chrome", "Este navegador não consegue abrir o treino. Copie o link e abra no Chrome.", true);
+    return;
+  }
+  try {
+    render(payload, describe(await decodePayload(payload)));
+  } catch (e) {
+    showMessage("Link com problema", "Este link de treino está incompleto ou com erro. Peça para enviar de novo.", true);
+  }
+}
+
+window.addEventListener("hashchange", start);
+start();
+</script>
+</body>
+</html>
