@@ -97,10 +97,11 @@
   .empty { color: var(--muted); text-align: center; padding: 24px 0; }
   .intro { color: var(--muted); margin: 0 0 18px; }
   footer { color: var(--muted); font-size: 13px; text-align: center; margin-top: 28px; }
-  .get { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin: 0 0 20px; }
-  .get h2 { font-size: 17px; margin: 0 0 4px; }
+  .get { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; margin: 0 0 20px; }
+  .get > summary { font-size: 15px; }
+  .get[open] > summary { margin-bottom: 10px; }
   .get p { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
-  .get ol { color: var(--muted); font-size: 14px; margin: 10px 0 0; padding-left: 20px; }
+  .get ol { color: var(--muted); font-size: 14px; margin: 12px 0 0; padding-left: 20px; }
   .get li { margin: 4px 0; }
   .get .btn { font-size: 16px; padding: 12px; }
   .get details { margin: 12px 0 0; }
@@ -116,19 +117,17 @@
   <section id="catalog" hidden>
     <h1>Treinos prontos</h1>
     <p class="intro">Escolha um treino e toque em <b>Adicionar ao Curtis</b>. O app abre o treino para você conferir e salvar.</p>
-    <div class="get" id="get-app">
-      <h2>Ainda não tem o Curtis?</h2>
+    <!-- Collapsed by default: most visitors already have the app. -->
+    <details class="get" id="get-app">
+      <summary>Ainda não tem o Curtis? Baixe o app</summary>
       <p>App gratuito para Android. Baixe e instale antes de adicionar os treinos.</p>
       <a class="btn btn-primary" href="https://github.com/guimelotto/curtis-link/releases/latest/download/Curtis.apk">Baixar o app (Android)</a>
-      <details>
-        <summary>Como instalar</summary>
-        <ol>
-          <li>Toque em <b>Baixar o app</b> e espere terminar.</li>
-          <li>Abra o arquivo <b>Curtis.apk</b> nas notificações ou em Downloads.</li>
-          <li>Se o celular pedir, toque em <b>Configurações</b> e permita instalar apps desta fonte.</li>
-          <li>Toque em <b>Instalar</b>. Depois volte aqui e escolha seus treinos.</li>
-        </ol>
-      </details>
+      <ol>
+        <li>Toque em <b>Baixar o app</b> e espere terminar.</li>
+        <li>Abra o arquivo <b>Curtis.apk</b> nas notificações ou em Downloads.</li>
+        <li>Se o celular pedir, toque em <b>Configurações</b> e permita instalar apps desta fonte.</li>
+        <li>Toque em <b>Instalar</b>. Depois volte aqui e escolha seus treinos.</li>
+      </ol>
       <details>
         <summary>Tem Galaxy Watch?</summary>
         <ol>
@@ -137,7 +136,7 @@
           <li>Para enviar ao relógio, use o app <b>Wear Installer 2</b> (Play Store), que ensina o passo a passo.</li>
         </ol>
       </details>
-    </div>
+    </details>
 
     <div class="filters">
       <div class="chips" id="f-type" role="group" aria-label="Tipo de treino"></div>
