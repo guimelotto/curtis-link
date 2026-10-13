@@ -97,6 +97,13 @@
   .empty { color: var(--muted); text-align: center; padding: 24px 0; }
   .intro { color: var(--muted); margin: 0 0 18px; }
   footer { color: var(--muted); font-size: 13px; text-align: center; margin-top: 28px; }
+  .get { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin: 0 0 20px; }
+  .get h2 { font-size: 17px; margin: 0 0 4px; }
+  .get p { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+  .get ol { color: var(--muted); font-size: 14px; margin: 10px 0 0; padding-left: 20px; }
+  .get li { margin: 4px 0; }
+  .get .btn { font-size: 16px; padding: 12px; }
+  .get details { margin: 12px 0 0; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -109,6 +116,29 @@
   <section id="catalog" hidden>
     <h1>Treinos prontos</h1>
     <p class="intro">Escolha um treino e toque em <b>Adicionar ao Curtis</b>. O app abre o treino para você conferir e salvar.</p>
+    <div class="get" id="get-app">
+      <h2>Ainda não tem o Curtis?</h2>
+      <p>App gratuito para Android. Baixe e instale antes de adicionar os treinos.</p>
+      <a class="btn btn-primary" href="https://github.com/guimelotto/curtis-link/releases/latest/download/Curtis.apk">Baixar o app (Android)</a>
+      <details>
+        <summary>Como instalar</summary>
+        <ol>
+          <li>Toque em <b>Baixar o app</b> e espere terminar.</li>
+          <li>Abra o arquivo <b>Curtis.apk</b> nas notificações ou em Downloads.</li>
+          <li>Se o celular pedir, toque em <b>Configurações</b> e permita instalar apps desta fonte.</li>
+          <li>Toque em <b>Instalar</b>. Depois volte aqui e escolha seus treinos.</li>
+        </ol>
+      </details>
+      <details>
+        <summary>Tem Galaxy Watch?</summary>
+        <ol>
+          <li>O relógio mostra batimento e o treino, mas não é obrigatório.</li>
+          <li>Baixe o <a href="https://github.com/guimelotto/curtis-link/releases/latest/download/Curtis-relogio.apk">app do relógio</a>.</li>
+          <li>Para enviar ao relógio, use o app <b>Wear Installer 2</b> (Play Store), que ensina o passo a passo.</li>
+        </ol>
+      </details>
+    </div>
+
     <div class="filters">
       <div class="chips" id="f-type" role="group" aria-label="Tipo de treino"></div>
       <div class="chips" id="f-level" role="group" aria-label="Nível"></div>
@@ -116,7 +146,7 @@
     </div>
     <p class="count" id="c-count"></p>
     <div class="cards" id="c-list"></div>
-    <footer>O botão abre o app Curtis no Android. Se nada acontecer, instale o app primeiro.</footer>
+    <footer>O botão abre o app Curtis no Android. Se nada acontecer, instale o app primeiro (lá em cima).</footer>
   </section>
 
   <section id="workout" hidden>
@@ -128,7 +158,7 @@
     <div class="card"><ol id="w-list"></ol></div>
     <div class="actions">
       <a class="btn btn-primary" id="open-app" href="#">Abrir no Curtis</a>
-      <p class="help">Se nada acontecer, instale o app Curtis primeiro.</p>
+      <p class="help">Se nada acontecer, <a href="https://github.com/guimelotto/curtis-link/releases/latest/download/Curtis.apk" style="color: var(--accent)">baixe e instale o app Curtis</a> primeiro.</p>
       <button class="btn btn-secondary" id="copy" type="button">Copiar link</button>
     </div>
   </section>
